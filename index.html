@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Empleabilidad - Generador de Documento</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- html2pdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- PDF.js para renderizar PDFs adjuntos en la vista previa -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons for UI elements -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        // Configuración de worker para PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        unitec: {
+                            blue: '#006FBA',
+                            orange: '#F68B1F',
+                            darkblue: '#004A80',
+                            purple: '#7C3AED'
+                        },
+                        johari: {
+                            public: '#E0F2FE', // Azul cielo
+                            blind: '#FFEDD5',  // Naranja claro
+                            hidden: '#DCFCE7', // Verde suave
+                            unknown: '#F3E8FF' // Violeta
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Regla explícita para el scrollbar en listas desplegables largas */
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f1f1;
+        }
+
+        /* A4 Page Styling (Landscape) */
+        .page-a4 {
+            width: 297mm; 
+            min-height: 210mm; 
+            background: white;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Form sections transition */
+        .form-section {
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Inputs focus ring customization */
+        input:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #006FBA;
+            border-color: #006FBA;
+        }
+
+        /* Estilos visuales para campos bloqueados/deshabilitados */
+        input:disabled, select:disabled, textarea:disabled, button:disabled {
+            background-color: #f3f4f6 !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+        }
+
+        .upload-card-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            cursor: not-allowed;
+            background-color: #f9fafb !important;
+            border-color: #e5e7eb !important;
+        }
+
+        /* PDF export overrides */
+        .pdf-export-mode {
+            box-shadow: none !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col font-sans text-gray-800 overflow-hidden">
+
+    <header class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10 shrink-0 gap-6 flex-wrap">
+        <div class="flex items-center gap-4">
+            <div class="bg-unitec-blue p-3 rounded-lg shrink-0">
+                <i data-lucide="file-text" class="text-white w-6 h-6"></i>
+            </div>
+            <div class="max-w-3xl">
+                <h1 class="text-xl font-bold text-gray-800 tracking-tight mb-1">Módulo de Empleabilidad</h1>
+                <p class="text-xs text-gray-500 leading-relaxed text-justify">
+                    Este espacio está diseñado para facilitar la creación de tu entregable de la primera semana del Módulo de Empleabilidad. Realizarás la prueba de Ventana de Johari, trazarás la ruta hacia tu puesto soñado con la IA de la bolsa de trabajo e integrarás tus resultados de la prueba DISC.
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+            <button id="btn-example" class="flex items-center gap-2 px-4 py-2 text-white bg-teal-500 hover:bg-teal-600 rounded-lg transition-colors font-medium shadow-sm">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                Llenar Ejemplo
+            </button>
+            <button id="btn-clear" class="flex items-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium border border-gray-200">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                Limpiar Datos
+            </button>
+            <button id="btn-download" class="flex items-center gap-2 px-5 py-2 text-white bg-unitec-orange hover:bg-orange-500 rounded-lg transition-colors font-medium shadow-md">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Descargar PDF</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <section class="w-full md:w-[45%] lg:w-[40%] bg-white overflow-y-auto border-r border-gray-200 relative z-0">
+            <div class="p-6 space-y-8 pb-32">
+                
+                <!-- Datos del Alumno -->
+                <div class="form-section bg-gray-50 border-l-4 border-unitec-blue rounded-r-lg p-5 shadow-sm">
+                    <h2 class="text-unitec-blue font-bold uppercase text-xs tracking-wider mb-4 flex items-center gap-2">
+                        <i data-lucide="user" class="w-4 h-4"></i> Datos del Alumno
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Nombre(s)</label>
+                            <input type="text" id="in-name" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm transition-all" placeholder="Ej. Juan">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Apellidos</label>
+                            <input type="text" id="in-lastname" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm transition-all" placeholder="Ej. Pérez López">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">No. de Matrícula</label>
+                            <input type="text" id="in-id" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm transition-all" placeholder="Ej. 12345678">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Área de la carrera</label>
+                            <select id="in-area" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm transition-all text-gray-700">
+                                <option value="" disabled selected>Selecciona un área</option>
+                                <option value="F.A.C.S.">F.A.C.S.</option>
+                                <option value="Ingenierías">Ingenierías</option>
+                                <option value="Salud">Salud</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Carrera</label>
+                            <div class="relative" id="carrera-dropdown-container">
+                                <button type="button" id="btn-major-select" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm transition-all text-left flex justify-between items-center text-gray-400 cursor-not-allowed" disabled>
+                                    <span id="selected-major-label" class="truncate">Primero selecciona un área</span>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 shrink-0 text-gray-400 ml-1"></i>
+                                </button>
+                                <input type="hidden" id="in-major" value="">
+                                
+                                <div id="major-options-menu" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-xl z-50 max-h-64 flex flex-col p-1">
+                                    <div class="p-1 border-b border-gray-100">
+                                        <input type="text" id="major-search-input" placeholder="🔍 Buscar carrera..." class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded bg-gray-50 focus:bg-white text-gray-800 focus:outline-none focus:border-unitec-blue">
+                                    </div>
+                                    <div id="major-options-list" class="overflow-y-auto custom-scrollbar max-h-48 space-y-0.5 p-1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Campus</label>
+                            <select id="in-campus" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm transition-all text-gray-700">
+                                <option value="" disabled selected>Selecciona un campus</option>
+                                <option value="Atizapan">Atizapan</option>
+                                <option value="Cuitlahuac">Cuitlahuac</option>
+                                <option value="Ecatepec">Ecatepec</option>
+                                <option value="Guadalajara">Guadalajara</option>
+                                <option value="León">León</option>
+                                <option value="Los Reyes">Los Reyes</option>
+                                <option value="Marina">Marina</option>
+                                <option value="Merida">Merida</option>
+                                <option value="Monterrey">Monterrey</option>
+                                <option value="On Line">On Line</option>
+                                <option value="Puebla">Puebla</option>
+                                <option value="Queretaro">Queretaro</option>
+                                <option value="Sur">Sur</option>
+                                <option value="Toluca">Toluca</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Fecha de entrega</label>
+                            <input type="date" id="in-date" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 1 -->
+                <div class="form-section">
+                    <div class="flex justify-between items-center border-b-2 border-unitec-blue pb-2 mb-4">
+                        <h2 class="text-lg font-bold text-unitec-blue flex items-center gap-2">
+                            <i data-lucide="layout-grid" class="w-5 h-5"></i> SECCIÓN 1: Ventana de Johari
+                        </h2>
+                    </div>
+                    
+                    <div class="space-y-4 mb-6">
+                        <p class="text-sm text-gray-600 font-medium">1. Llena los cuadrantes:</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-blue-700 mb-1">Área Pública 🔵</label>
+                                <textarea id="in-johari-public" rows="3" class="w-full px-3 py-2 border border-blue-200 rounded-md bg-blue-50 text-sm resize-none" placeholder="Lo que yo sé y los demás saben..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-orange-700 mb-1">Área Ciega 🟠</label>
+                                <textarea id="in-johari-blind" rows="3" class="w-full px-3 py-2 border border-orange-200 rounded-md bg-orange-50 text-sm resize-none" placeholder="Lo que los demás ven y yo no..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-green-700 mb-1">Área Oculta 🟢</label>
+                                <textarea id="in-johari-hidden" rows="3" class="w-full px-3 py-2 border border-green-200 rounded-md bg-green-50 text-sm resize-none" placeholder="Lo que yo sé y oculto a los demás..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-purple-700 mb-1">Área Desconocida 🟣</label>
+                                <textarea id="in-johari-unknown" rows="3" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-purple-50 text-sm resize-none" placeholder="Lo que ni yo ni los demás sabemos..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600 font-medium">2. Responde a las preguntas:</p>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">P1. ¿Qué aprendiste sobre ti?</label>
+                            <textarea id="in-j-q1" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">P2. ¿Qué hallazgo del Área Ciega impacta más en tu perfil profesional?</label>
+                            <textarea id="in-j-q2" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">P3. ¿Qué acciones tomarás para expandir tu Área Pública en entrevistas laborales?</label>
+                            <textarea id="in-j-q3" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm resize-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 2 -->
+                <div class="form-section">
+                    <div class="flex justify-between items-center border-b-2 border-unitec-orange pb-2 mb-4">
+                        <h2 class="text-lg font-bold text-unitec-orange flex items-center gap-2">
+                            <i data-lucide="route" class="w-5 h-5"></i> SECCIÓN 2: Ruta de Carrera
+                        </h2>
+                    </div>
+                    
+                    <div class="space-y-4 mb-6">
+                        <p class="text-sm text-gray-600 font-medium">1. Adjunta hasta 4 capturas de pantalla con la ruta de carrera que te Trazo la IA:</p>
+                        <div class="grid grid-cols-2 gap-4" id="image-uploads-container">
+                            <!-- Image Inputs -->
+                            <div class="relative border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 rounded-lg p-2 text-center transition-colors upload-card" id="card-img-1">
+                                <input type="file" id="in-img-1" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleImageUpload(event, 1)">
+                                <div class="flex flex-col items-center justify-center h-16 pointer-events-none">
+                                    <i data-lucide="image-plus" class="w-6 h-6 text-blue-500 mb-1"></i>
+                                    <span class="text-[10px] text-blue-700 font-semibold truncate w-full px-1" id="label-img-1">Captura 1 (Azul)</span>
+                                </div>
+                            </div>
+                            <div class="relative border-2 border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100 rounded-lg p-2 text-center transition-colors upload-card" id="card-img-2">
+                                <input type="file" id="in-img-2" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleImageUpload(event, 2)">
+                                <div class="flex flex-col items-center justify-center h-16 pointer-events-none">
+                                    <i data-lucide="image-plus" class="w-6 h-6 text-orange-500 mb-1"></i>
+                                    <span class="text-[10px] text-orange-700 font-semibold truncate w-full px-1" id="label-img-2">Captura 2 (Naranja)</span>
+                                </div>
+                            </div>
+                            <div class="relative border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 rounded-lg p-2 text-center transition-colors upload-card" id="card-img-3">
+                                <input type="file" id="in-img-3" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleImageUpload(event, 3)">
+                                <div class="flex flex-col items-center justify-center h-16 pointer-events-none">
+                                    <i data-lucide="image-plus" class="w-6 h-6 text-blue-500 mb-1"></i>
+                                    <span class="text-[10px] text-blue-700 font-semibold truncate w-full px-1" id="label-img-3">Captura 3 (Azul)</span>
+                                </div>
+                            </div>
+                            <div class="relative border-2 border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100 rounded-lg p-2 text-center transition-colors upload-card" id="card-img-4">
+                                <input type="file" id="in-img-4" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleImageUpload(event, 4)">
+                                <div class="flex flex-col items-center justify-center h-16 pointer-events-none">
+                                    <i data-lucide="image-plus" class="w-6 h-6 text-orange-500 mb-1"></i>
+                                    <span class="text-[10px] text-orange-700 font-semibold truncate w-full px-1" id="label-img-4">Captura 4 (Naranja)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600 font-medium">2. Responde a las preguntas:</p>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">P1. ¿La ruta que te trazo la IA es lo que esperabas?</label>
+                            <textarea id="in-c-q1" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">P2. ¿De la ruta que marco la IA hay algo que ya habías considerado?</label>
+                            <textarea id="in-c-q2" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">P3. Después de hacer tu ruta de carrera cuál es tu plan para lograr llegar a tu puesto deseado?</label>
+                            <textarea id="in-c-q3" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm resize-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NUEVA SECCIÓN 3: PRUEBA DISC -->
+                <div class="form-section">
+                    <div class="flex justify-between items-center border-b-2 border-purple-600 pb-2 mb-4">
+                        <h2 class="text-lg font-bold text-purple-600 flex items-center gap-2">
+                            <i data-lucide="file-check-2" class="w-5 h-5"></i> SECCIÓN 3: Prueba DISC
+                        </h2>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600 font-medium">1. Adjunta tu archivo PDF con los resultados de la prueba DISC:</p>
+                        
+                        <div class="relative border-2 border-dashed border-purple-300 bg-purple-50 hover:bg-purple-100 rounded-lg p-4 text-center transition-colors upload-card" id="card-disc-pdf">
+                            <input type="file" id="in-disc-pdf" accept="application/pdf,.pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleDiscPdfUpload(event)">
+                            <div class="flex flex-col items-center justify-center pointer-events-none space-y-1">
+                                <i data-lucide="file-up" class="w-8 h-8 text-purple-600"></i>
+                                <span class="text-xs text-purple-800 font-bold" id="label-disc-pdf">Haz clic para subir tu reporte DISC (.PDF)</span>
+                                <span class="text-[11px] text-purple-600">El archivo se incluirá visualmente en tu entregable</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="flex-1 bg-gray-200 overflow-auto p-4 md:p-8 custom-scrollbar relative">
+            
+            <!-- Document Container (A4 Proportions) -->
+            <div id="document-preview" class="page-a4 rounded-sm flex flex-col relative text-sm pb-10 bg-white">
+                
+                <div class="z-10 flex flex-col w-full h-full flex-1">
+                    
+                    <!-- Header Corporativo UNITEC -->
+                    <header class="w-full bg-gradient-to-r from-unitec-blue to-unitec-darkblue px-8 py-5 flex justify-center items-center relative overflow-hidden shrink-0">
+                        
+                        <!-- Título Central -->
+                        <div class="text-center z-10 mx-4">
+                            <h1 class="text-white text-2xl font-bold uppercase tracking-widest leading-tight">Módulo de Empleabilidad</h1>
+                            <p class="text-blue-200 text-xs mt-0.5 tracking-wide uppercase font-medium">Entregable Semana 1</p>
+                        </div>
+
+                        <!-- Linea Naranja Decorativa -->
+                        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-unitec-orange"></div>
+                    </header>
+
+                    <div class="px-10 py-6 flex flex-col flex-1 gap-6">
+                        
+                        <!-- Datos del Alumno Tarjetero Output -->
+                        <section class="bg-gray-50 border-l-4 border-unitec-blue rounded-r-lg p-5 shadow-sm">
+                            <h2 class="text-unitec-blue font-bold uppercase text-xs tracking-wider mb-3">Datos del Alumno</h2>
+                            <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+                                <div><span class="font-semibold text-gray-500">Nombre(s):</span> <span id="out-name" class="font-medium text-gray-900 ml-1"></span></div>
+                                <div><span class="font-semibold text-gray-500">Apellidos:</span> <span id="out-lastname" class="font-medium text-gray-900 ml-1"></span></div>
+                                <div><span class="font-semibold text-gray-500">Matrícula:</span> <span id="out-id" class="font-medium text-gray-900 ml-1"></span></div>
+                                <div><span class="font-semibold text-gray-500">Área:</span> <span id="out-area" class="font-medium text-gray-900 ml-1"></span></div>
+                                <div><span class="font-semibold text-gray-500">Carrera:</span> <span id="out-major" class="font-medium text-gray-900 ml-1"></span></div>
+                                <div><span class="font-semibold text-gray-500">Campus:</span> <span id="out-campus" class="font-medium text-gray-900 ml-1"></span></div>
+                                <div><span class="font-semibold text-gray-500">Fecha:</span> <span id="out-date" class="font-medium text-gray-900 ml-1"></span></div>
+                            </div>
+                        </section>
+
+                        <!-- Vista Previa Sección 1 -->
+                        <section>
+                            <h2 class="text-unitec-blue font-bold text-lg border-b border-gray-300 pb-1 mb-4 uppercase">Sección 1: Ventana de Johari</h2>
+                            
+                            <!-- 2x2 Grid -->
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div class="bg-johari-public border border-[#7DD3FC] rounded-xl p-4 shadow-sm min-h-[90px]">
+                                    <h3 class="font-bold text-blue-800 text-xs uppercase mb-1">🔵 Área Pública</h3>
+                                    <p id="out-johari-public" class="text-[13px] text-gray-800 whitespace-pre-wrap"></p>
+                                </div>
+                                <div class="bg-johari-blind border border-[#FDBA74] rounded-xl p-4 shadow-sm min-h-[90px]">
+                                    <h3 class="font-bold text-orange-800 text-xs uppercase mb-1">🟠 Área Ciega</h3>
+                                    <p id="out-johari-blind" class="text-[13px] text-gray-800 whitespace-pre-wrap"></p>
+                                </div>
+                                <div class="bg-johari-hidden border border-[#86EFAC] rounded-xl p-4 shadow-sm min-h-[90px]">
+                                    <h3 class="font-bold text-green-800 text-xs uppercase mb-1">🟢 Área Oculta</h3>
+                                    <p id="out-johari-hidden" class="text-[13px] text-gray-800 whitespace-pre-wrap"></p>
+                                </div>
+                                <div class="bg-johari-unknown border border-[#D8B4FE] rounded-xl p-4 shadow-sm min-h-[90px]">
+                                    <h3 class="font-bold text-purple-800 text-xs uppercase mb-1">🟣 Área Desconocida</h3>
+                                    <p id="out-johari-unknown" class="text-[13px] text-gray-800 whitespace-pre-wrap"></p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="border-l-[3px] border-unitec-blue pl-4 py-1">
+                                    <h4 class="font-bold text-[13px] text-gray-800"><span class="bg-unitec-blue text-white px-1.5 py-0.5 rounded text-xs mr-1">P1</span> ¿Qué aprendiste sobre ti?</h4>
+                                    <p id="out-j-q1" class="text-[13px] text-gray-600 mt-1 whitespace-pre-wrap min-h-[1.5rem]"></p>
+                                </div>
+                                <div class="border-l-[3px] border-unitec-blue pl-4 py-1">
+                                    <h4 class="font-bold text-[13px] text-gray-800"><span class="bg-unitec-blue text-white px-1.5 py-0.5 rounded text-xs mr-1">P2</span> ¿Qué hallazgo del Área Ciega impacta más en tu perfil profesional?</h4>
+                                    <p id="out-j-q2" class="text-[13px] text-gray-600 mt-1 whitespace-pre-wrap min-h-[1.5rem]"></p>
+                                </div>
+                                <div class="border-l-[3px] border-unitec-blue pl-4 py-1">
+                                    <h4 class="font-bold text-[13px] text-gray-800"><span class="bg-unitec-blue text-white px-1.5 py-0.5 rounded text-xs mr-1">P3</span> ¿Qué acciones tomarás para expandir tu Área Pública en entrevistas laborales?</h4>
+                                    <p id="out-j-q3" class="text-[13px] text-gray-600 mt-1 whitespace-pre-wrap min-h-[1.5rem]"></p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Vista Previa Sección 2 -->
+                        <section class="mt-4">
+                            <h2 class="text-unitec-orange font-bold text-lg border-b border-gray-300 pb-1 mb-4 uppercase">Sección 2: Ruta de Carrera</h2>
+                            
+                            <!-- Grid ajustado a 4 columnas con relación de aspecto 10:16 para capturas verticales -->
+                            <div class="grid grid-cols-4 gap-3 mb-6">
+                                <div class="border-[3px] border-unitec-blue bg-[#F0F7FF] rounded-lg aspect-[10/16] max-h-56 flex items-center justify-center overflow-hidden relative shadow-sm mx-auto w-full">
+                                    <span class="absolute text-unitec-blue font-bold opacity-30 uppercase text-[10px] text-center z-0 pointer-events-none px-1">Captura 1 (🔵)</span>
+                                    <img id="out-img-1" src="" class="w-full h-full object-contain z-10 hidden bg-white">
+                                </div>
+                                <div class="border-[3px] border-unitec-orange bg-[#FFF7F0] rounded-lg aspect-[10/16] max-h-56 flex items-center justify-center overflow-hidden relative shadow-sm mx-auto w-full">
+                                    <span class="absolute text-unitec-orange font-bold opacity-30 uppercase text-[10px] text-center z-0 pointer-events-none px-1">Captura 2 (🟠)</span>
+                                    <img id="out-img-2" src="" class="w-full h-full object-contain z-10 hidden bg-white">
+                                </div>
+                                <div class="border-[3px] border-unitec-blue bg-[#F0F7FF] rounded-lg aspect-[10/16] max-h-56 flex items-center justify-center overflow-hidden relative shadow-sm mx-auto w-full">
+                                    <span class="absolute text-unitec-blue font-bold opacity-30 uppercase text-[10px] text-center z-0 pointer-events-none px-1">Captura 3 (🔵)</span>
+                                    <img id="out-img-3" src="" class="w-full h-full object-contain z-10 hidden bg-white">
+                                </div>
+                                <div class="border-[3px] border-unitec-orange bg-[#FFF7F0] rounded-lg aspect-[10/16] max-h-56 flex items-center justify-center overflow-hidden relative shadow-sm mx-auto w-full">
+                                    <span class="absolute text-unitec-orange font-bold opacity-30 uppercase text-[10px] text-center z-0 pointer-events-none px-1">Captura 4 (🟠)</span>
+                                    <img id="out-img-4" src="" class="w-full h-full object-contain z-10 hidden bg-white">
+                                </div>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="border-l-[3px] border-unitec-orange pl-4 py-1">
+                                    <h4 class="font-bold text-[13px] text-gray-800"><span class="bg-unitec-orange text-white px-1.5 py-0.5 rounded text-xs mr-1">P1</span> ¿La ruta que te trazo la IA es lo que esperabas?</h4>
+                                    <p id="out-c-q1" class="text-[13px] text-gray-600 mt-1 whitespace-pre-wrap min-h-[1.5rem]"></p>
+                                </div>
+                                <div class="border-l-[3px] border-unitec-orange pl-4 py-1">
+                                    <h4 class="font-bold text-[13px] text-gray-800"><span class="bg-unitec-orange text-white px-1.5 py-0.5 rounded text-xs mr-1">P2</span> ¿De la ruta que marco la IA hay algo que ya habías considerado?</h4>
+                                    <p id="out-c-q2" class="text-[13px] text-gray-600 mt-1 whitespace-pre-wrap min-h-[1.5rem]"></p>
+                                </div>
+                                <div class="border-l-[3px] border-unitec-orange pl-4 py-1">
+                                    <h4 class="font-bold text-[13px] text-gray-800"><span class="bg-unitec-orange text-white px-1.5 py-0.5 rounded text-xs mr-1">P3</span> Después de hacer tu ruta de carrera cuál es tu plan para lograr llegar a tu puesto deseado?</h4>
+                                    <p id="out-c-q3" class="text-[13px] text-gray-600 mt-1 whitespace-pre-wrap min-h-[1.5rem]"></p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Vista Previa Sección 3: PRUEBA DISC -->
+                        <section class="mt-4">
+                            <h2 class="text-purple-600 font-bold text-lg border-b border-gray-300 pb-1 mb-4 uppercase">Sección 3: Resultados de la Prueba DISC</h2>
+                            
+                            <div id="out-disc-container" class="bg-purple-50/50 border-2 border-dashed border-purple-200 rounded-xl p-4 min-h-[180px] flex flex-col items-center justify-center">
+                                <div id="out-disc-placeholder" class="text-center py-6">
+                                    <i data-lucide="file-badge-2" class="w-10 h-10 text-purple-300 mx-auto mb-2"></i>
+                                    <p class="text-xs text-purple-400 font-medium">Adjunta el PDF con tus resultados DISC en el formulario</p>
+                                </div>
+                                <div id="out-disc-render" class="w-full flex flex-col gap-4 items-center hidden">
+                                    <!-- Aquí se renderizarán las páginas del PDF subido -->
+                                </div>
+                            </div>
+                        </section>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const carrerasPorArea = {
+            'F.A.C.S.': [
+                'Licenciatura en Actuaría',
+                'Licenciatura en Administración Agropecuaria',
+                'Licenciatura en Administración de Empresas',
+                'Licenciatura en Administración de Empresas de Entretenimiento y Comunicación',
+                'Licenciatura en Administración de Empresas Turísticas',
+                'Licenciatura en Administración de Recursos Humanos',
+                'Licenciatura en Administración Financiera',
+                'Licenciatura en Administración Pública',
+                'Licenciatura en Administración Turística con Enfoque en Ecoturismo Inclusivo',
+                'Licenciatura en Administración Turística y Reuniones Internacionales',
+                'Licenciatura en Arquitectura',
+                'Licenciatura en Ciencias de la Comunicación',
+                'Licenciatura en Comercio Internacional',
+                'Licenciatura en Comunicación y Medios',
+                'Licenciatura en Contaduría Pública',
+                'Licenciatura en Contaduría Pública y Finanzas',
+                'Licenciatura en Criminología',
+                'Licenciatura en Derecho',
+                'Licenciatura en Diseño de Interiores',
+                'Licenciatura en Diseño de Modas',
+                'Licenciatura en Diseño Gráfico',
+                'Licenciatura en Diseño Gráfico y Comunicación Visual',
+                'Licenciatura en Diseño Industrial',
+                'Licenciatura en Diseño, Animación y Arte Digital',
+                'Licenciatura en Economía',
+                'Licenciatura en Economía y Finanzas',
+                'Licenciatura en Educación',
+                'Licenciatura en Entretenimiento y Producción Musical',
+                'Licenciatura en Filosofía',
+                'Licenciatura en Finanzas',
+                'Licenciatura en Finanzas y Banca',
+                'Licenciatura en Gastronomía',
+                'Licenciatura en Gestión de Ventas y Comercialización',
+                'Licenciatura en Historia',
+                'Licenciatura en Lengua y Literatura Hispánica',
+                'Licenciatura en Lenguas Extranjeras',
+                'Licenciatura en Matemáticas Aplicadas',
+                'Licenciatura en Mercadotecnia',
+                'Licenciatura en Mercadotecnia Digital y Publicidad',
+                'Licenciatura en Negocios Internacionales',
+                'Licenciatura en Pedagogía',
+                'Licenciatura en Psicología',
+                'Licenciatura en Publicidad y Medios',
+                'Licenciatura en Relaciones Internacionales',
+                'Licenciatura en Relaciones Públicas',
+                'Licenciatura en Seguridad Pública',
+                'Licenciatura en Sociología'
+            ],
+            'Ingenierías': [
+                'Ingeniería Ambiental y Energías Renovables',
+                'Ingeniería Civil',
+                'Ingeniería Electrónica',
+                'Ingeniería en Ciberseguridad',
+                'Ingeniería en Ciencia de Datos',
+                'Ingeniería en Electrónica y Telecomunicaciones',
+                'Ingeniería en Gestión de Negocios',
+                'Ingeniería en Inteligencia Artificial',
+                'Ingeniería en Logística',
+                'Ingeniería en Robótica y Sistemas Digitales',
+                'Ingeniería en Sistemas Computacionales',
+                'Ingeniería en Sistemas de Software',
+                'Ingeniería en Videojuegos',
+                'Ingeniería Industrial y Administración',
+                'Ingeniería Industrial y de Sistemas',
+                'Ingeniería Mecánica',
+                'Ingeniería Mecatrónica',
+                'Ingeniería Química',
+                'Licenciatura en Física Aplicada',
+                'Licenciatura en Ingeniería en Tecnologías de la Información'
+            ],
+            'Salud': [
+                'Ingeniería Biomédica',
+                'Ingeniería en Biotecnología',
+                'Licenciatura en Biología',
+                'Licenciatura en Cirujano Dentista',
+                'Licenciatura en Cultura Física y Deportes',
+                'Licenciatura en Enfermería (Escolarizada)',
+                'Licenciatura en Enfermería Modalidad Mixta (Ejecutiva)',
+                'Licenciatura en Fisioterapia',
+                'Licenciatura en Medicina',
+                'Licenciatura en Medicina Veterinaria y Zootecnia',
+                'Licenciatura en Nutrición',
+                'Licenciatura en Químico Farmacéutico Biólogo'
+            ]
+        };
+
+        // Orden estricto de campos requeridos secuencialmente
+        const sequenceOrder = [
+            'in-name',
+            'in-lastname',
+            'in-id',
+            'in-area',
+            'in-major',
+            'in-campus',
+            'in-date',
+            'in-johari-public',
+            'in-johari-blind',
+            'in-johari-hidden',
+            'in-johari-unknown',
+            'in-j-q1',
+            'in-j-q2',
+            'in-j-q3',
+            // Las imágenes y el PDF son opcionales / liberados al avanzar
+            'in-c-q1',
+            'in-c-q2',
+            'in-c-q3'
+        ];
+
+        function isFieldFilled(fieldId) {
+            const el = document.getElementById(fieldId);
+            if (!el) return false;
+            return el.value && el.value.trim() !== '';
+        }
+
+        function setElementDisabledState(id, disabled) {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            if (id === 'in-major') {
+                const btnMajor = document.getElementById('btn-major-select');
+                if (btnMajor) {
+                    btnMajor.disabled = disabled;
+                    if (disabled) {
+                        btnMajor.classList.add('cursor-not-allowed', 'text-gray-400');
+                        btnMajor.classList.remove('cursor-pointer', 'text-gray-800');
+                    } else {
+                        btnMajor.classList.remove('cursor-not-allowed', 'text-gray-400');
+                        btnMajor.classList.add('cursor-pointer', 'text-gray-800');
+                    }
+                }
+            } else {
+                el.disabled = disabled;
+            }
+        }
+
+        function updateFormSequence() {
+            let unlockNext = true;
+
+            for (let i = 0; i < sequenceOrder.length; i++) {
+                const fieldId = sequenceOrder[i];
+
+                if (i === 0) {
+                    // El primer campo siempre está habilitado
+                    setElementDisabledState(fieldId, false);
+                    if (!isFieldFilled(fieldId)) unlockNext = false;
+                    continue;
+                }
+
+                if (unlockNext) {
+                    setElementDisabledState(fieldId, false);
+                    if (!isFieldFilled(fieldId)) {
+                        unlockNext = false;
+                    }
+                } else {
+                    setElementDisabledState(fieldId, true);
+                }
+            }
+
+            // Manejo de la sección opcional de imágenes
+            const allowImages = isFieldFilled('in-j-q3');
+            for (let i = 1; i <= 4; i++) {
+                const card = document.getElementById(`card-img-${i}`);
+                const fileInput = document.getElementById(`in-img-${i}`);
+                if (card && fileInput) {
+                    if (allowImages) {
+                        card.classList.remove('upload-card-disabled');
+                        fileInput.disabled = false;
+                    } else {
+                        card.classList.add('upload-card-disabled');
+                        fileInput.disabled = true;
+                    }
+                }
+            }
+
+            // Manejo de la sección de PDF DISC
+            const allowDisc = isFieldFilled('in-c-q3');
+            const discCard = document.getElementById('card-disc-pdf');
+            const discInput = document.getElementById('in-disc-pdf');
+            if (discCard && discInput) {
+                if (allowDisc) {
+                    discCard.classList.remove('upload-card-disabled');
+                    discInput.disabled = false;
+                } else {
+                    discCard.classList.add('upload-card-disabled');
+                    discInput.disabled = true;
+                }
+            }
+        }
+
+        function updateCarrerasOptions(selectedArea, selectedMajor = '') {
+            const btnMajor = document.getElementById('btn-major-select');
+            const labelMajor = document.getElementById('selected-major-label');
+            const hiddenInput = document.getElementById('in-major');
+            const optionsMenu = document.getElementById('major-options-menu');
+            const optionsList = document.getElementById('major-options-list');
+            const searchInput = document.getElementById('major-search-input');
+            const outMajor = document.getElementById('out-major');
+
+            if (!btnMajor || !labelMajor || !hiddenInput || !optionsMenu || !optionsList) return;
+
+            optionsList.innerHTML = '';
+            optionsMenu.classList.add('hidden');
+            if (searchInput) searchInput.value = '';
+
+            if (selectedArea && carrerasPorArea[selectedArea]) {
+                if (!selectedMajor) {
+                    labelMajor.textContent = 'Selecciona una carrera';
+                    labelMajor.classList.add('text-gray-400');
+                    labelMajor.classList.remove('text-gray-800');
+                    hiddenInput.value = '';
+                    if (outMajor) outMajor.textContent = '';
+                }
+
+                const renderList = (filterText = '') => {
+                    optionsList.innerHTML = '';
+                    const filtered = carrerasPorArea[selectedArea].filter(carrera => 
+                        carrera.toLowerCase().includes(filterText.toLowerCase())
+                    );
+
+                    if (filtered.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.className = 'px-3 py-2 text-xs text-gray-400 italic text-center';
+                        empty.textContent = 'No se encontraron coincidencias';
+                        optionsList.appendChild(empty);
+                        return;
+                    }
+
+                    filtered.forEach(carrera => {
+                        const item = document.createElement('div');
+                        const isSelected = carrera === selectedMajor;
+
+                        item.className = `px-3 py-2 rounded-md cursor-pointer transition-colors text-xs flex justify-between items-center ${
+                            isSelected 
+                                ? 'bg-unitec-blue text-white font-medium' 
+                                : 'text-gray-700 hover:bg-blue-50 hover:text-unitec-blue'
+                        }`;
+                        item.textContent = carrera;
+
+                        item.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            hiddenInput.value = carrera;
+                            labelMajor.textContent = carrera;
+                            labelMajor.classList.remove('text-gray-400');
+                            labelMajor.classList.add('text-gray-800');
+                            if (outMajor) outMajor.textContent = carrera;
+
+                            optionsMenu.classList.add('hidden');
+                            updateCarrerasOptions(selectedArea, carrera);
+                            updateFormSequence();
+                        });
+
+                        optionsList.appendChild(item);
+                    });
+                };
+
+                renderList();
+
+                if (searchInput) {
+                    searchInput.oninput = (e) => {
+                        e.stopPropagation();
+                        renderList(e.target.value);
+                    };
+                    searchInput.onclick = (e) => e.stopPropagation();
+                }
+
+                if (selectedMajor) {
+                    hiddenInput.value = selectedMajor;
+                    labelMajor.textContent = selectedMajor;
+                    labelMajor.classList.remove('text-gray-400');
+                    labelMajor.classList.add('text-gray-800');
+                    if (outMajor) outMajor.textContent = selectedMajor;
+                }
+
+            } else {
+                labelMajor.textContent = 'Primero selecciona un área';
+                labelMajor.classList.add('text-gray-400');
+                hiddenInput.value = '';
+                if (outMajor) outMajor.textContent = '';
+            }
+        }
+
+        // Función global para carga de imágenes locales
+        window.handleImageUpload = function(event, index) {
+            const file = event.target.files[0];
+            const outputImg = document.getElementById(`out-img-${index}`);
+            const labelEl = document.getElementById(`label-img-${index}`);
+            
+            if (file && outputImg && labelEl) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    outputImg.src = e.target.result;
+                    outputImg.classList.remove('hidden');
+                    labelEl.textContent = file.name;
+                }
+                reader.readAsDataURL(file);
+            }
+        };
+
+        // Función para procesar y renderizar el PDF de DISC subido por el alumno
+        window.handleDiscPdfUpload = function(event) {
+            const file = event.target.files[0];
+            const labelEl = document.getElementById('label-disc-pdf');
+            const renderContainer = document.getElementById('out-disc-render');
+            const placeholder = document.getElementById('out-disc-placeholder');
+
+            if (!file) return;
+
+            if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+                alert('Por favor selecciona un archivo en formato PDF.');
+                return;
+            }
+
+            labelEl.textContent = `PDF cargado: ${file.name}`;
+            
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+                const typedarray = new Uint8Array(this.result);
+                
+                try {
+                    renderContainer.innerHTML = ''; // Limpiar previo
+                    placeholder.classList.add('hidden');
+                    renderContainer.classList.remove('hidden');
+
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    
+                    // Renderizar páginas principales (máximo las primeras 3 páginas para optimizar espacio)
+                    const maxPages = Math.min(pdf.numPages, 3);
+                    
+                    for (let i = 1; i <= maxPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const viewport = page.getViewport({ scale: 1.2 });
+                        
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        canvas.className = 'max-w-full rounded border border-gray-300 shadow-sm object-contain bg-white mb-2';
+
+                        await page.render({
+                            canvasContext: context,
+                            viewport: viewport
+                        }).promise;
+
+                        renderContainer.appendChild(canvas);
+                    }
+                } catch (error) {
+                    console.error('Error al procesar el PDF de DISC:', error);
+                    alert('Ocurrió un error al cargar el archivo PDF. Asegúrate de que no esté protegido.');
+                }
+            };
+            fileReader.readAsArrayBuffer(file);
+        };
+
+        // Generador de Placeholder en Base64 para evitar errores de CORS con html2canvas durante el "Llenar Ejemplo"
+        function createBase64Placeholder(text, bgColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 20px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+            
+            return canvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        // Simulación visual de reporte DISC para el botón "Llenar Ejemplo"
+        function createDiscExampleCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 750;
+            canvas.height = 350;
+            const ctx = canvas.getContext('2d');
+
+            // Fondo
+            ctx.fillStyle = '#FAFAFA';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#E5E7EB';
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+            // Título de la simulación
+            ctx.fillStyle = '#6B21A8';
+            ctx.font = 'bold 22px Inter, sans-serif';
+            ctx.fillText('INFORME DE PERFIL CONDUCTUAL DISC', 40, 45);
+
+            // Barras de gráfica DISC
+            const data = [
+                { label: 'D (Dominancia)', val: 75, color: '#EF4444' },
+                { label: 'I (Influencia)', val: 85, color: '#F59E0B' },
+                { label: 'S (Estabilidad)', val: 40, color: '#10B981' },
+                { label: 'C (Cumplimiento)', val: 60, color: '#3B82F6' }
+            ];
+
+            data.forEach((item, idx) => {
+                const y = 90 + (idx * 55);
+                ctx.fillStyle = '#374151';
+                ctx.font = 'bold 14px Inter, sans-serif';
+                ctx.fillText(item.label, 40, y + 18);
+
+                // Barra fondo
+                ctx.fillStyle = '#E5E7EB';
+                ctx.fillRect(200, y, 450, 25);
+
+                // Barra valor
+                ctx.fillStyle = item.color;
+                ctx.fillRect(200, y, (450 * item.val) / 100, 25);
+
+                // Porcentaje
+                ctx.fillStyle = '#111827';
+                ctx.font = 'bold 14px Inter, sans-serif';
+                ctx.fillText(`${item.val}%`, 660, y + 18);
+            });
+
+            return canvas;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar Iconos
+            try {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } catch (error) {
+                console.warn("Iconos cargando lentamente...", error);
+            }
+
+            // Configurar apertura/cierre del menú desplegable de Carrera
+            const btnMajor = document.getElementById('btn-major-select');
+            const optionsMenu = document.getElementById('major-options-menu');
+
+            if (btnMajor && optionsMenu) {
+                btnMajor.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!btnMajor.disabled) {
+                        optionsMenu.classList.toggle('hidden');
+                    }
+                });
+
+                document.addEventListener('click', (e) => {
+                    const container = document.getElementById('carrera-dropdown-container');
+                    if (container && !container.contains(e.target)) {
+                        optionsMenu.classList.add('hidden');
+                    }
+                });
+            }
+
+            // 1. Lógica para Sincronizar todos los inputs a los outputs y controlar la secuencia
+            const inputs = document.querySelectorAll('input[type="text"], input[type="date"], select, textarea');
+            
+            const updateOutput = (element) => {
+                const outId = element.id.replace('in-', 'out-');
+                const outEl = document.getElementById(outId);
+                if(outEl) {
+                    outEl.textContent = element.value;
+                }
+            }
+
+            const inArea = document.getElementById('in-area');
+
+            if (inArea) {
+                inArea.addEventListener('change', (e) => {
+                    updateCarrerasOptions(e.target.value);
+                    updateOutput(e.target);
+                    updateFormSequence();
+                });
+            }
+
+            inputs.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    updateOutput(e.target);
+                    updateFormSequence();
+                });
+                input.addEventListener('change', (e) => {
+                    updateOutput(e.target);
+                    updateFormSequence();
+                });
+            });
+
+            // Inicializar formulario secuencial en estado original
+            updateFormSequence();
+
+            // 2. Lógica del Botón de Ejemplo
+            const exampleData = {
+                'in-name': 'Ana Sofía',
+                'in-lastname': 'Martínez Ramírez',
+                'in-id': '32019485',
+                'in-area': 'F.A.C.S.',
+                'in-major': 'Licenciatura en Diseño Gráfico',
+                'in-campus': 'Atizapan',
+                'in-date': '2026-08-15',
+                
+                'in-johari-public': 'Soy una persona creativa, me comunico bien con mi equipo y siempre entrego mis proyectos en tiempo y forma.',
+                'in-johari-blind': 'Mis compañeros notan que me estreso fácilmente cuando las fechas límite están cerca, aunque yo pienso que lo oculto bien.',
+                'in-johari-hidden': 'Me da bastante pánico hablar en público frente a audiencias grandes, siempre evito dar las presentaciones finales.',
+                'in-johari-unknown': 'Mi capacidad para liderar un equipo multidisciplinario en un proyecto grande, ya que hasta ahora solo he sido operativa.',
+                
+                'in-j-q1': 'Me di cuenta de que mi lenguaje corporal transmite mucho estrés a mi equipo, lo cual no es ideal.',
+                'in-j-q2': 'Saber que transmito estrés puede afectar mis oportunidades de ser considerada para un rol de liderazgo.',
+                'in-j-q3': 'Empezaré a tomar cursos de manejo de la ansiedad y pediré retroalimentación constante a mi gerente.',
+                
+                'in-c-q1': 'Sí, la plataforma me sugirió aspirar a Directora de Arte Senior, lo cual se alinea perfecto con mi meta a largo plazo.',
+                'in-c-q2': 'Ya había considerado tomar cursos avanzados de diseño UX/UI, que la IA también me recomendó como habilidad cruzada.',
+                'in-c-q3': 'Mi plan es buscar una certificación en herramientas de prototipado este semestre y pedir involucrarme en proyectos de diseño web en mi trabajo actual.'
+            };
+
+            const btnExample = document.getElementById('btn-example');
+            btnExample.addEventListener('click', () => {
+                updateCarrerasOptions(exampleData['in-area'], exampleData['in-major']);
+
+                for (const [id, value] of Object.entries(exampleData)) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.value = value;
+                        updateOutput(el); 
+                    }
+                }
+
+                // Imágenes simuladas de Ruta de Carrera
+                for(let i=1; i<=4; i++) {
+                    const outputImg = document.getElementById(`out-img-${i}`);
+                    const labelEl = document.getElementById(`label-img-${i}`);
+                    
+                    const bgColor = (i === 1 || i === 3) ? '#006FBA' : '#F68B1F';
+                    outputImg.src = createBase64Placeholder(`Captura Simulada ${i}`, bgColor);
+                    outputImg.classList.remove('hidden');
+                    labelEl.textContent = `captura_ruta_${i}.png`;
+                }
+
+                // Cargar ejemplo simulado en Sección DISC
+                const renderContainer = document.getElementById('out-disc-render');
+                const placeholder = document.getElementById('out-disc-placeholder');
+                const labelDisc = document.getElementById('label-disc-pdf');
+
+                if (renderContainer && placeholder && labelDisc) {
+                    renderContainer.innerHTML = '';
+                    const sampleCanvas = createDiscExampleCanvas();
+                    sampleCanvas.className = 'max-w-full rounded border border-purple-200 shadow-sm object-contain bg-white mb-2';
+                    renderContainer.appendChild(sampleCanvas);
+                    placeholder.classList.add('hidden');
+                    renderContainer.classList.remove('hidden');
+                    labelDisc.textContent = 'PDF cargado: Resultados_DISC_Ejemplo.pdf';
+                }
+
+                // Desbloquear secuencia completa
+                updateFormSequence();
+            });
+
+            // 3. Lógica del Botón Limpiar Datos
+            const btnClear = document.getElementById('btn-clear');
+            btnClear.addEventListener('click', () => {
+                inputs.forEach(input => {
+                    input.value = '';
+                    updateOutput(input);
+                });
+                updateCarrerasOptions('');
+
+                for(let i=1; i<=4; i++) {
+                    const fileInput = document.getElementById(`in-img-${i}`);
+                    const outputImg = document.getElementById(`out-img-${i}`);
+                    const labelEl = document.getElementById(`label-img-${i}`);
+                    
+                    if (fileInput) fileInput.value = ''; 
+                    if (outputImg) {
+                        outputImg.src = '';
+                        outputImg.classList.add('hidden');
+                    }
+                    const color = (i===1 || i===3) ? 'Azul' : 'Naranja';
+                    if (labelEl) labelEl.textContent = `Captura ${i} (${color})`;
+                }
+
+                // Limpiar sección DISC
+                const discInput = document.getElementById('in-disc-pdf');
+                const renderContainer = document.getElementById('out-disc-render');
+                const placeholder = document.getElementById('out-disc-placeholder');
+                const labelDisc = document.getElementById('label-disc-pdf');
+
+                if (discInput) discInput.value = '';
+                if (renderContainer) {
+                    renderContainer.innerHTML = '';
+                    renderContainer.classList.add('hidden');
+                }
+                if (placeholder) placeholder.classList.remove('hidden');
+                if (labelDisc) labelDisc.textContent = 'Haz clic para subir tu reporte DISC (.PDF)';
+
+                // Volver a bloquear la secuencia
+                updateFormSequence();
+            });
+
+            // 4. Lógica de Descarga a PDF usando html2pdf
+            const btnDownload = document.getElementById('btn-download');
+            
+            btnDownload.addEventListener('click', async () => {
+                const element = document.getElementById('document-preview');
+                const scrollContainer = element.parentElement;
+                
+                const originalScrollTop = scrollContainer.scrollTop;
+                const originalScrollLeft = scrollContainer.scrollLeft;
+                scrollContainer.scrollTop = 0;
+                scrollContainer.scrollLeft = 0;
+
+                const studentName = document.getElementById('in-name').value || 'Alumno';
+                const lastName = document.getElementById('in-lastname').value || '';
+                const filename = `Empleabilidad_${studentName}_${lastName}.pdf`.replace(/\s+/g, '_');
+
+                const opt = {
+                    margin:       0,
+                    filename:     filename,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { 
+                        scale: 2, 
+                        useCORS: true, 
+                        scrollY: 0, 
+                        scrollX: 0
+                    },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                };
+
+                const originalBtnHtml = btnDownload.innerHTML;
+                btnDownload.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Generando...</span>';
+                btnDownload.disabled = true;
+                btnDownload.classList.add('opacity-75', 'cursor-wait');
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+
+                element.classList.add('pdf-export-mode');
+                
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 150)); 
+                    await html2pdf().set(opt).from(element).save();
+                } catch (err) {
+                    console.error("Error al generar PDF:", err);
+                    alert("Ocurrió un error al generar el PDF. Revisa la consola.");
+                } finally {
+                    element.classList.remove('pdf-export-mode');
+                    scrollContainer.scrollTop = originalScrollTop;
+                    scrollContainer.scrollLeft = originalScrollLeft;
+                    
+                    btnDownload.innerHTML = originalBtnHtml;
+                    btnDownload.disabled = false;
+                    btnDownload.classList.remove('opacity-75', 'cursor-wait');
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
